@@ -1,0 +1,10 @@
+{
+  "applications": {
+    "_default": {
+      "link": "bunko-dev"
+    },
+    "bunko-dev": {
+      "applicationId": "e6tgfUrqtOvoXsqFd9xCeYqsSxbiexgvvfss5741"
+    }
+  }
+}
