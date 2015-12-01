@@ -13,7 +13,7 @@
 	    <script type="text/javascript">
 	    <!--
 			var _memberId = null;
-			var _locationId = null;
+			var _placeId = null;
 	    	load = function(data) {
 	    		// 最後の行を読み込む
 	    		var _last = data.substring(data.lastIndexOf("\n")).replace(/\r?\n/g,"");
@@ -22,29 +22,44 @@
 	    		// 会員、棚、書籍か判定する
 	    		// 13桁であれば、書籍、最初の1文字が"U"の場合は会員、最初の1文字が"L"の場合は棚
 	    		if (_last.length == 13) {
-	    			// 会員がある場合は貸出
-	    			if (_memberId != null) {
-		    			Parse.Cloud.run('recordLending', { itemNo: _last, memberId: _memberId }, {
-							success: function(result) {
-								notifyOk(result.message);
-							},
-							error: function(error) {
-								notifyError(error);
-							}
-						});	    				
+	    			if (_memberId === null && _placeId === null) {
+	    				notifyError({ message: "会員か棚を指定してください。" });
+	    				return;
 	    			}
-	    			// 棚がある場合は移動または返却
-	    			// XXX 現状だと、移動と返却の区別がつかないので、返却のみの実施
-	    			if (_locationId != null) {
-		    			Parse.Cloud.run('recordIncoming', { itemNo: _last, locationId: _locationId }, {
-							success: function(result) {
-								notifyOk(result.message);
-							},
-							error: function(error) {
-								notifyError(error);
-							}
-						});	    				
-	    			}
+	    			// 蔵書の検索
+	    			Parse.Cloud.run('getCopy', { bookNo: _last }, {
+	    				// 検索に成功した場合
+						success: function(result) {
+							_copyId = result.id;
+			    			// 会員がある場合は貸出
+			    			if (_memberId != null) {
+				    			Parse.Cloud.run('borrow', { copyId: _copyId, memberId: _memberId }, {
+									success: function(result) {
+										notifyOk(result);
+									},
+									error: function(error) {
+										notifyError(error);
+									}
+								});
+			    			}
+			    			// 棚がある場合は移動または返却
+			    			if(_placeId != null) {
+				    			Parse.Cloud.run('putin', { copyId: _copyId, placeId: _placeId }, {
+									success: function(result) {
+										notifyOk(result);
+									},
+									error: function(error) {
+										notifyError(error);
+									}
+								});			    				
+			    			}
+						},
+						// 検索に失敗した場合
+						error: function(error) {
+							notifyError(error);
+							return;
+						}
+	    			});
 	    			return;
 	    		}
 	    		// 会員
@@ -52,7 +67,7 @@
 	    			Parse.Cloud.run('getMember', { memberNo: _last }, {
 						success: function(result) {
 							_memberId = result.id;
-							_locationId = null;
+							_placeId = null;
 							notifyOk("OK");
 						},
 						error: function(error) {
@@ -62,11 +77,11 @@
 		    		return;
 		    	}
 	    		// 保管場所
-	    		if (_last.substring(0, 1) == "L") {
-	    			Parse.Cloud.run('getLocation', { locationNo: _last }, {
+	    		if (_last.substring(0, 1) == "P") {
+	    			Parse.Cloud.run('getPlace', { placeNo: _last }, {
 						success: function(result) {
 							_memberId = null;
-							_locationId = result.id;
+							_placeId = result.id;
 							notifyOk("OK");
 						},
 						error: function(error) {
@@ -85,6 +100,10 @@
 	    		$("#msg").html($("#msg").html() + "..." + error.message + "<br/>");
 	    		document.getElementById('audio_error').play();
 	    	};
+	    	clear = function() {
+	    		_placeId = null;
+	    		_memberId = null;
+	    	};
 	    	$(function(){
 	    		$("#data").keypress( function( event ){
 	    			// ENTERキーが入力されたら処理を実行する
@@ -93,6 +112,7 @@
 	    			}
 	    		});
 	    		$("#clear").click(function() {
+	    			clear();
 	    			$("#data").val("");
 	    			$("#msg").html("");
 	    		});
@@ -102,7 +122,7 @@
 	</head>
 	<body>
 		<h1>児玉文庫</h1>
-		<h2>蔵書の貸出、返却、（移動）</h2>
+		<h2>蔵書の貸出、返却、移動</h2>
 		<div class="row">
 		  <div class="col-md-1">
 			<textarea rows="30" cols="15" id="data"></textarea>

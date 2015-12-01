@@ -1,3 +1,135 @@
+// Models
+var Copy = Parse.Object.extend("Copy", {
+    // Instance methods,
+ 	borrow: function(memberId) {
+ 		var copy = this;
+ 		return copy.canBorrow()
+	 		.then(function() {
+	 			return Member.get(memberId);
+	 		})
+	 		.then(function(member) {
+				var Transaction = Parse.Object.extend("Transaction");
+				var transaction = new Transaction();
+				transaction.set("effectiveDate", new Date());
+				transaction.set("transactionType", "貸出");
+				transaction.set("member", member);
+				transaction.set("copy", copy);
+				return transaction.save();
+	 		});
+ 	},
+ 	canBorrow: function() {
+ 		return this.getStatus()
+ 			.then(function(status) {
+				if (status == "未在庫" || status == "在庫中") { 
+					return true;
+				}
+				return Parse.Promise.error("貸出できません。");
+ 			});
+    },
+    return: function(placeId) {
+    	var copy = this;
+    	return copy.canReturn()
+    		.then(function() {
+    			return Place.get(placeId);
+    		})
+    		.then(function(place) {
+				var Transaction = Parse.Object.extend("Transaction");
+				var transaction = new Transaction();
+				transaction.set("effectiveDate", new Date());
+				transaction.set("transactionType", "返却");
+				transaction.set("place", place);
+				transaction.set("copy", copy);
+				return transaction.save();
+    		});
+    },
+    canReturn: function() {
+    	return this.getStatus()
+	    	.then(function(status) {
+	    		if (status == "貸出中") {
+	    			return true;
+	    		}
+				return Parse.Promise.error("返却できません。");
+	    	});
+    },
+    move: function(placeId) {
+    	var copy = this;
+    	return copy.canMove()
+    		.then(function() {
+    			return Place.get(placeId);
+    		})
+    		.then(function(place) {
+				var Transaction = Parse.Object.extend("Transaction");
+				var transaction = new Transaction();
+				transaction.set("effectiveDate", new Date());
+				transaction.set("transactionType", "移動");
+				transaction.set("place", place);
+				transaction.set("copy", copy);
+				return transaction.save();
+    		});
+    },
+    canMove: function() {
+    	return this.getStatus()
+	    	.then(function(status) {
+	    		if (status == "未在庫" || status == "在庫中") {
+	    			return true;
+	    		}
+				return Parse.Promise.error("移動できません。");
+	    	});
+    },
+    getStatus: function() {
+		var Transaction = Parse.Object.extend("Transaction");
+    	var query = new Parse.Query(Transaction);
+    	query.equalTo("copy", this);
+    	query.limit(1);
+		query.descending("effectiveDate");
+ 		return query.find()
+ 			.then(function(transactions) {
+ 				if (transactions.length == 0) {
+ 					return Parse.Promise.error("保有移動が登録されていません。");
+ 				}
+ 				var query2 = new Parse.Query(Transaction);
+ 				return query2.get(transactions[0].id);
+ 			})
+ 			.then(function(transaction) {
+ 				return Copy.toStatus(transaction.get("transactionType"));
+ 			});
+    }    
+}, {
+	// Class properties
+ 	get: function(copyId) {
+		var Copy = Parse.Object.extend("Copy");
+		var query = new Parse.Query(Copy);
+		return query.get(copyId);
+ 	},
+ 	toStatus: function(type) {
+ 		if (type == "登録") { return "未在庫"; }
+ 		if (type == "貸出") { return "貸出中"; }
+ 		if (type == "移動" || type == "返却") { return "在庫中"; }
+ 		if (type == "削除" ) { return "削除済"; }
+ 		return Parse.Promise.error("想定されていない種別です。");
+ 	}
+});
+var Member = Parse.Object.extend("Member", {
+    // Instance methods,
+}, {
+	// Class properties
+ 	get: function(memberId) {
+		var Member = Parse.Object.extend("Member");
+		var query = new Parse.Query(Member);
+		return query.get(memberId);
+ 	}
+});
+var Place = Parse.Object.extend("Place", {
+    // Instance methods,
+}, {
+	// Class properties
+ 	get: function(placeId) {
+		var Place = Parse.Object.extend("Place");
+		var query = new Parse.Query(Place);
+		return query.get(placeId);
+ 	}
+});
+
 /**
  * 保有の登録
  * @param {string} itemNo - Item.itemNo
@@ -110,128 +242,72 @@ Parse.Cloud.define("addHolding", function(request, response) {
 
 /**
  * 貸出の記録
- * @param {string} itemNo - Item.itemId
+ * @param {string} copyId - Copy.objectId
  * @param {string} memberId - Member.objectId
  */
-Parse.Cloud.define("recordLending", function(request, response) {
-	var itemNo = request.params.itemNo;
+Parse.Cloud.define("borrow", function(request, response) {
+	var copyId = request.params.copyId;
 	var memberId = request.params.memberId;
-	// 保有を検索する
-	var Holding = Parse.Object.extend("Holding");
-	var Item = Parse.Object.extend("Item");
-	var query = new Parse.Query(Holding);
-	var innerQuery = new Parse.Query(Item);
-	innerQuery.equalTo("itemNo", itemNo);
-	query.matchesKeyInQuery("item", "objectId", innerQuery);
-	query.find({
-		success: function(results) {
-			// 登録されていない場合はエラー
-			if (results.length == 0) {
-				response.error("保有が登録されていません。");
-				return;
-			}
-			// 書架にある保有を探す
-			for (var i = results.length - 1; i >= 0; i--) {
-				if (results[i].attributes.member == null) {
-					// 会員を検索する
-					var Member = Parse.Object.extend("Member");
-					var query = new Parse.Query(Member);
-					query.get(memberId, {
-						success: function(object) {
-							results[i].save({ member : object }, {
-								success: function(object) {
-									response.success({ message: "貸出しました。" });
-								},
-								error: function(model, error) {
-									response.error(error);
-								}
-							});
-					  	},
-						error: function(object, error) {
-							console.log(error);
-						}
-					});
-					return;
-				}
-			};
-			// 書架にない場合はエラー
-			// XXX 又貸しを許すかどうか
-			response.error("書架にある保有はありません。又貸しは禁止です。");
-	  	},
-		error: function(error) {
+	Copy.get(copyId)
+		.then(function(copy){
+			return copy.borrow(memberId);
+		})
+		.then(function(transaction) {
+			response.success("貸出OK");				
+		}, function(error) {
 			response.error(error);
-		}
-	});
+		});
 });
 
 /**
  * 入庫の記録（返却、移動）
- * @param {string} itemNo - Item.itemId
+ * @param {string} copyId - Copy.objectId
  * @param {string} locationId - Location.objectId
  */
-Parse.Cloud.define("recordIncoming", function(request, response) {
-	var itemNo = request.params.itemNo;
-	var locationId = request.params.locationId;
-	// 保有を検索する
-	var Holding = Parse.Object.extend("Holding");
-	var Item = Parse.Object.extend("Item");
-	var query = new Parse.Query(Holding);
-	var innerQuery = new Parse.Query(Item);
-	innerQuery.equalTo("itemNo", itemNo);
-	query.matchesKeyInQuery("item", "objectId", innerQuery);
-	query.find({
-		success: function(results) {
-			// 登録されていない場合はエラー
-			if (results.length == 0) {
-				response.error("保有が登録されていません。");
-				return;
+Parse.Cloud.define("putin", function(request, response) {
+	var copyId = request.params.copyId;
+	var placeId = request.params.placeId;
+	Copy.get(copyId)
+		.then(function(copy) {
+			return copy.getStatus();
+		})
+		.then(function(status) {
+			if (status == "貸出中") {
+				// 再検索するのが気持ち悪い
+				return Copy.get(copyId)
+				.then(function(copy) {
+					return copy.return(placeId);
+				});
 			}
-			// 貸出中の保有を探す
-			// XXX 現状だと、移動と返却の区別がつかない
-			for (var i = results.length - 1; i >= 0; i--) {
-				if (results[i].attributes.member != null) {
-					var Location = Parse.Object.extend("Location");
-					var query = new Parse.Query(Location);
-					query.get(locationId, {
-						success: function(object) {
-							results[i].save({ location : object, member : null }, {
-								success: function(object) {
-									response.success({ message: "返却しました。" });
-								},
-								error: function(model, error) {
-									response.error(error);
-								}
-							});
-					  	},
-						error: function(object, error) {
-							console.log(error);
-						}
-					});					
-					return;
-				}
-			};
-	  	},
-		error: function(error) {
+			// それ以外の場合は移動
+			return Copy.get(copyId)
+			.then(function(copy) {
+				return copy.move(placeId);
+			});
+		})
+		.then(function(transaction) {
+			response.success("入庫OK");
+		}, function(error) {
 			response.error(error);
-		}
-	});
+		});
 });
 
 /**
- * 保有の検索
- * @param {string} params
+ * 蔵書の取得
+ * @param {string} itemNo
  */
-Parse.Cloud.define("getHoldings", function(request, response) {
-	var Holding = Parse.Object.extend("Holding");
-	var Item = Parse.Object.extend("Item");
-	var query = new Parse.Query(Holding);
-	query.include("item");
-	query.include("location");
-	query.include("member");
-	query.find({
-		success: function(results) {
-			response.success(results);
-	  	},
+Parse.Cloud.define("getCopy", function(request, response) {
+	var Copy = Parse.Object.extend("Copy");
+	var query = new Parse.Query(Copy);
+	query.equalTo("bookNo", request.params.bookNo);
+	return query.find({
+		success: function(results){
+			if(results.length == 0) {
+				response.error("蔵書が登録されていません。");
+			} else {
+				response.success(results[0]);
+			}
+		},
 		error: function(error) {
 			response.error(error);
 		}
@@ -240,18 +316,17 @@ Parse.Cloud.define("getHoldings", function(request, response) {
 
 /**
  * 場所の検索
- * @param {string} locationNo - Location.locationNo
+ * @param {string} placeNo - Place.placeNo
  */
-Parse.Cloud.define("getLocation", function(request, response) {
-	var locationNo = request.params.locationNo;
-	var Location = Parse.Object.extend("Location");
-	var query = new Parse.Query(Location);
-	query.equalTo("locationNo", locationNo);
+Parse.Cloud.define("getPlace", function(request, response) {
+	var placeNo = request.params.placeNo;
+	var Place = Parse.Object.extend("Place");
+	var query = new Parse.Query(Place);
+	query.equalTo("placeNo", placeNo);
 	query.find({
 		success: function(results) {
-			// 登録されていなければエラー
 			if (results.length == 0) {
-				response.error("棚が登録されていません。");
+				response.error("保管場所が登録されていません。");
 			} else {
 				response.success(results[0]);
 			}
@@ -285,19 +360,6 @@ Parse.Cloud.define("getMember", function(request, response) {
 		}
 	});
 });
-
-getLocation = function(locationId) {
-	var Location = Parse.Object.extend("Location");
-	var query = new Parse.Query(Location);
-	query.get(locationId, {
-		success: function(object) {
-			return object;
-	  	},
-		error: function(object, error) {
-			console.log(error);
-		}
-	});
-}
 
 getGoogleBookInfo = function(isbn) {
 	return Parse.Cloud.httpRequest({
