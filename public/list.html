@@ -15,7 +15,7 @@
 	    	$(function(){
 	    		// Parse
 	    		Parse.initialize(config.applicationId, config.javascriptKey);	    		
-    			Parse.Cloud.run('getHoldings', {}, {
+    			Parse.Cloud.run('findCopy', {}, {
 					success: function(results) {
 						for (var i = 0; i < results.length; i++) {
 							var result = results[i];
@@ -41,13 +41,26 @@
 	</head>
 	<body>
 		<h1>児玉文庫</h1>
-		<h2>蔵書の一覧</h2>
+		<h2>蔵書の検索</h2>
+		<div class="row">
+		  <div class="col-lg-6">
+		    <div class="input-group">
+		      <span class="input-group-btn">
+		        <button class="btn btn-default" type="button">
+		        	<span class="glyphicon glyphicon-search" aria-hidden="true"></span>
+		        </button>
+		      </span>
+		      <input type="text" class="form-control" placeholder="Search for...">
+		    </div><!-- /input-group -->
+		  </div><!-- /.col-lg-6 -->
+		</div>
+		<br>
 		<div class="row">
 			<div class="col-md-9">
 				<table class="table table-hover" id="list">
 					<tr>
-						<th>品目番号</th>
-						<th class="col-xs-2 col-ms-2 col-md-2 col-lg-2">品目属性</th>
+						<th>書籍番号</th>
+						<th class="col-xs-4 col-ms-4 col-md-4 col-lg-4">属性</th>
 						<th>保管場所</th>
 						<th>借りている人</th>
 					</tr>
