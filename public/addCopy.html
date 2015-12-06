@@ -26,8 +26,8 @@
 	    				notifyError({ message: "会員か棚を指定してください。" });
 	    				return;
 	    			}
-	    			// 蔵書の検索
-	    			Parse.Cloud.run('getCopy', { bookNo: _last }, {
+	    			// 蔵書の登録
+	    			Parse.Cloud.run('addCopy', { bookNo: _last, memberNo: _memberId, placeNo : _placeId }, {
 	    				// 検索に成功した場合
 						success: function(result) {
 							_copyId = result.id;
