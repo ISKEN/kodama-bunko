@@ -20,7 +20,7 @@
 	    		// Parse
 	    		Parse.initialize(config.applicationId, config.javascriptKey);	    		
 	    		// 会員、棚、書籍か判定する
-	    		// 13桁であれば、書籍、最初の1文字が"U"の場合は会員、最初の1文字が"L"の場合は棚
+	    		// 13桁であれば、書籍、最初の1文字が"M"の場合は会員、最初の1文字が"L"の場合は棚
 	    		if (_last.length == 13) {
 	    			if (_memberId === null && _placeId === null) {
 	    				notifyError({ message: "会員か棚を指定してください。" });

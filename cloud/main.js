@@ -94,25 +94,27 @@ var Copy = Parse.Object.extend("Copy", {
  				return Copy.toStatus(transaction.get("transactionType"));
  			});
  	},
-    addCopy: function(isbn, placeId, memberId) {
-		var Transaction = Parse.Object.extend("Transaction");
-    	var query = new Parse.Query(Transaction);
-    	query.equalTo("copy", this);
-    	query.limit(1);
-		query.descending("effectiveDate");
- 		return query.find()
- 			.then(function(transactions) {
- 				if (transactions.length == 0) {
- 					return Parse.Promise.error("保有移動が登録されていません。");
- 				}
- 				var query2 = new Parse.Query(Transaction);
- 				return query2.get(transactions[0].id);
- 			})
- 			.then(function(transaction) {
- 				return Copy.toStatus(transaction.get("transactionType"));
- 			});
-    }       
-}, {
+    addCopy: function(isbn, placeId, memberNo) {
+    	var _doseExist = exist(isbn);
+    	if (_doseExist) {
+    		var _bookInfo = getBookInfo();
+    		var _attributes = parseAttributes(_bookInfo);
+    		if (_bookInfo == 0){
+    			var Copy = Parse.Object.extend("Copy");
+				var _copy = new Copy();
+				_copy.set("bookNo", isbn);
+				_copy.set("attributes", _attributes);
+				_copy.save(null, {
+  					success: function(_copy) {
+				    	alert('New object created with bookNo: ' + _copy.bookNo);
+  					},
+  					error: function(_copy, error) {
+				    	alert('Failed to create new object, with error code: ' + error.description);
+  					}
+				});
+    		}
+ 		}	
+	}, 
 	// Class properties
  	get: function(copyId) {
 		var Copy = Parse.Object.extend("Copy");
@@ -368,6 +370,8 @@ Parse.Cloud.define("getMember", function(request, response) {
 	query.equalTo("memberNo", memberNo);
 	query.find({
 		success: function(results) {
+			console.log(results);
+			console.log(results.length);
 			// 登録されていなければエラー
 			if (results.length == 0) {
 				response.error("会員が登録されていません。");
