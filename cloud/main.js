@@ -93,7 +93,25 @@ var Copy = Parse.Object.extend("Copy", {
  			.then(function(transaction) {
  				return Copy.toStatus(transaction.get("transactionType"));
  			});
-    }    
+ 	},
+    addCopy: function(isbn, placeId, memberId) {
+		var Transaction = Parse.Object.extend("Transaction");
+    	var query = new Parse.Query(Transaction);
+    	query.equalTo("copy", this);
+    	query.limit(1);
+		query.descending("effectiveDate");
+ 		return query.find()
+ 			.then(function(transactions) {
+ 				if (transactions.length == 0) {
+ 					return Parse.Promise.error("保有移動が登録されていません。");
+ 				}
+ 				var query2 = new Parse.Query(Transaction);
+ 				return query2.get(transactions[0].id);
+ 			})
+ 			.then(function(transaction) {
+ 				return Copy.toStatus(transaction.get("transactionType"));
+ 			});
+    }       
 }, {
 	// Class properties
  	get: function(copyId) {
@@ -152,6 +170,7 @@ Parse.Cloud.define("addHolding", function(request, response) {
 				.then(function(httpResponse) {
 					var _response = JSON.parse(httpResponse.text);
 					// 見つからなかった場合
+					console.log("mai-log");
 					console.log(httpResponse);
 					if (_response.totalItems == 0) {
 						// なかった場合は国会図書館のAPIを使う
@@ -163,6 +182,7 @@ Parse.Cloud.define("addHolding", function(request, response) {
 					} else {
 						// 見つかった場合
 						for (var i = 0; i < _response.items.length; i++) {
+							console.log(_response);
 							var res_item = _response.items[i];
 							for (var j = 0; j < res_item.volumeInfo.industryIdentifiers.length; j++) {
 								var industryIdentifier = res_item.volumeInfo.industryIdentifiers[j];
