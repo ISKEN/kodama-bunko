@@ -94,14 +94,44 @@ var Copy = Parse.Object.extend("Copy", {
  				return Copy.toStatus(transaction.get("transactionType"));
  			});
  	},
-    add: function(bookNo, attributes) {
-    	console.log("ここまで4");
+    add: function(bookNo, attributes,memberNo,placeNo ) {
+    	var member = null;
+    	console.log("addCopy start");
     	var Copy = Parse.Object.extend("Copy");
 		var _copy = new Copy();
 		_copy.set("bookNo", bookNo);
 		_copy.set("attributes", attributes);
 		_copy.save();
-	}, 
+		console.log("addTran start");
+		console.log("member,place " + memberNo+ "  :  "+placeNo);
+
+		//Transactionが保存できない
+		var Member = Parse.Object.extend("Member");
+		var query = new Parse.Query(Member);
+		query.equalTo("memberNo", memberNo);
+		return query.find()
+			.then(function(members) {
+				console.log("member find" + JSON.stringify(members));
+				// 登録されていなければエラー
+				if (members.length == 0) {
+					response.error("会員が登録されていません。");
+				} else {
+					member = members[0];
+				}
+			});
+		
+ 		var place = Place.get(placeNo);
+	 	var Transaction = Parse.Object.extend("Transaction");
+		var transaction = new Transaction();
+		transaction.set("effectiveDate", new Date());
+		transaction.set("transactionType", "登録");
+		transaction.set("member", member);
+		transaction.set("copy", _copy);
+		transaction.set("place", place);
+		transaction.save();
+		console.log("member " + JSON.stringify(member));
+		console.log("addTranEnd");
+ 	},  
 	// Class properties
  	get: function(copyId) {
 		var Copy = Parse.Object.extend("Copy");
@@ -423,12 +453,9 @@ Parse.Cloud.define("addCopy", function(request, response) {
 				console.log("getBookNo is none");
 				var _bookInfo = getGoogleBookInfo(bookNo);
 				var attribute = parseAttributes(_bookInfo);
-				
-				 _copy.add(bookNo,attribute);
-				
+				 _copy.add(bookNo,attribute,memberNo,placeNo);
 				console.log("copy add done");
 				response.success("OK");
-				// TODO トランザクションを登録する
 			} else {
 				console.log("Exist Book(s).");
 				response.error("既に蔵書が登録されています。");
