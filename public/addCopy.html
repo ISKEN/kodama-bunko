@@ -20,39 +20,18 @@
 	    		// Parse
 	    		Parse.initialize(config.applicationId, config.javascriptKey);	    		
 	    		// 会員、棚、書籍か判定する
-	    		// 13桁であれば、書籍、最初の1文字が"U"の場合は会員、最初の1文字が"L"の場合は棚
+	    		// 13桁であれば、書籍、最初の1文字が"U"の場合は会員
 	    		if (_last.length == 13) {
-	    			if (_memberId === null && _placeId === null) {
-	    				notifyError({ message: "会員か棚を指定してください。" });
+	    			if (_memberId === null) {
+	    				notifyError({ message: "会員を指定してください。" });
 	    				return;
 	    			}
 	    			// 蔵書の登録
+	    			_placeId = "P_NewBooks";
 	    			Parse.Cloud.run('addCopy', { bookNo: _last, memberNo: _memberId, placeNo : _placeId }, {
 	    				// 検索に成功した場合
 						success: function(result) {
 							_copyId = result.id;
-			    			// 会員がある場合は貸出
-			    			if (_memberId != null) {
-				    			Parse.Cloud.run('borrow', { copyId: _copyId, memberId: _memberId }, {
-									success: function(result) {
-										notifyOk(result);
-									},
-									error: function(error) {
-										notifyError(error);
-									}
-								});
-			    			}
-			    			// 棚がある場合は移動または返却
-			    			if(_placeId != null) {
-				    			Parse.Cloud.run('putin', { copyId: _copyId, placeId: _placeId }, {
-									success: function(result) {
-										notifyOk(result);
-									},
-									error: function(error) {
-										notifyError(error);
-									}
-								});			    				
-			    			}
 						},
 						// 検索に失敗した場合
 						error: function(error) {
@@ -76,20 +55,6 @@
 					});
 		    		return;
 		    	}
-	    		// 保管場所
-	    		if (_last.substring(0, 1) == "P") {
-	    			Parse.Cloud.run('getPlace', { placeNo: _last }, {
-						success: function(result) {
-							_memberId = null;
-							_placeId = result.id;
-							notifyOk("OK");
-						},
-						error: function(error) {
-							notifyError(error);
-						}
-					});
-		    		return;
-	    		}
 	    		notifyError({ "message" : "有効でない行です。" });
 	    	};
 	    	notifyOk = function(message) {
@@ -101,7 +66,7 @@
 	    		document.getElementById('audio_error').play();
 	    	};
 	    	clear = function() {
-	    		_placeId = null;
+	    		_placeId = "P_NewBook";
 	    		_memberId = null;
 	    	};
 	    	$(function(){
@@ -122,7 +87,7 @@
 	</head>
 	<body>
 		<h1>児玉文庫</h1>
-		<h2>蔵書の貸出、返却、移動</h2>
+		<h2>蔵書の登録</h2>
 		<div class="row">
 		  <div class="col-md-1">
 			<textarea rows="30" cols="15" id="data"></textarea>
