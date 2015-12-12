@@ -424,17 +424,11 @@ Parse.Cloud.define("addCopy", function(request, response) {
 				var _bookInfo = getGoogleBookInfo(bookNo);
 				var attribute = parseAttributes(_bookInfo);
 				
-				// _copy.add(bookNo,attribute);
-				
-				_copy.set("bookNo", bookNo);
-				_copy.set("attributes", attribute);
-				_copy.save();
+				 _copy.add(bookNo,attribute);
 				
 				console.log("copy add done");
 				response.success("OK");
-				// TODO 蔵書がないので登録処理を実行する
-				//      GoogleAPI 結果をパースする
-				//      蔵書とトランザクションを登録する
+				// TODO トランザクションを登録する
 			} else {
 				console.log("Exist Book(s).");
 				response.error("既に蔵書が登録されています。");
