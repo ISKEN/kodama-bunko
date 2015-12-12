@@ -94,32 +94,44 @@ var Copy = Parse.Object.extend("Copy", {
  				return Copy.toStatus(transaction.get("transactionType"));
  			});
  	},
-    addCopy: function(bookNo, memberNo, placeNo) {
-    	var _doesExist = exist(bookNo);
-    	if (!_doesExist) {
-    		var _bookInfo = getGoogleBookInfo();
-			if (_bookInfo[totalItems] > 0){
-    			var _attributes = parseAttributes(_bookInfo);
-    			var Copy = Parse.Object.extend("Copy");
-				var _copy = new Copy();
-				_copy.set("bookNo", bookNo);
-				_copy.set("attributes", _attributes);
-				_copy.save(null, {
-  					success: function(_copy) {
-				    	alert('New object created with bookNo: ' + _copy.bookNo);
-  					},
-  					error: function(_copy, error) {
-				    	alert('Failed to create new object, with error code: ' + error.description);
-  					}
-				});
-    		}
- 		}	
+    add: function(bookNo, attributes) {
+    	console.log("ここまで4");
+    	var Copy = Parse.Object.extend("Copy");
+		var _copy = new Copy();
+		_copy.set("bookNo", bookNo);
+		_copy.set("attributes", attributes);
+		_copy.save();
 	}, 
 	// Class properties
  	get: function(copyId) {
 		var Copy = Parse.Object.extend("Copy");
 		var query = new Parse.Query(Copy);
 		return query.get(copyId);
+ 	},
+ 	// Class properties
+ 	getByBookNo: function(bookNo) {
+ 		console.log("Call getByBookNo");
+ 		console.log("bookNo is "+ bookNo);
+		var Copy = Parse.Object.extend("Copy");
+		var query = new Parse.Query(Copy);
+		query.equalTo("bookNo", bookNo);
+		
+		return query.find({
+		success: function(results){
+			if(results.length == 0) {
+				console.log("getBookNo is none");
+				response.error("蔵書が登録されていません。");
+			} else {
+				console.log("getBookNo is succuse");
+				response.success(results[0]);
+			}
+		},
+		error: function(error) {
+			console.log("getBookNo is error");
+			response.error(error);
+		}
+	});
+		
  	},
  	toStatus: function(type) {
  		if (type == "登録") { return "未在庫"; }
@@ -385,6 +397,56 @@ Parse.Cloud.define("getMember", function(request, response) {
 	});
 });
 
+
+/**
+ * 蔵書の登録
+ * @param {string} memberNo - Me.memberNo
+ * @param {string} memberNo - Me.memberNo
+ * @param {string} memberNo - Me.memberNo
+ */
+Parse.Cloud.define("addCopy", function(request, response) {
+	console.log("ここまで３");
+	var memberNo = request.params.memberNo;
+	var placeNo = request.params.placeNo;
+	var bookNo = request.params.bookNo;
+	
+	var Copy = Parse.Object.extend("Copy");
+	var query = new Parse.Query(Copy);
+	
+	var _copy = new Copy();
+	
+	query.equalTo("bookNo", bookNo);
+	query.find({
+		success: function(results){
+			console.log("results -->" + results);
+			if(results.length == 0) {
+				console.log("getBookNo is none");
+				var _bookInfo = getGoogleBookInfo(bookNo);
+				var attribute = parseAttributes(_bookInfo);
+				
+				// _copy.add(bookNo,attribute);
+				
+				_copy.set("bookNo", bookNo);
+				_copy.set("attributes", attribute);
+				_copy.save();
+				
+				console.log("copy add done");
+				response.success("OK");
+				// TODO 蔵書がないので登録処理を実行する
+				//      GoogleAPI 結果をパースする
+				//      蔵書とトランザクションを登録する
+			} else {
+				console.log("Exist Book(s).");
+				response.error("既に蔵書が登録されています。");
+			}
+		},
+		error: function(error) {
+		console.log("getBookNo is error");
+			response.error(error);
+		}
+	});
+});
+
 getGoogleBookInfo = function(isbn) {
 	return Parse.Cloud.httpRequest({
 		url: "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn
@@ -422,8 +484,6 @@ getAmazonBookInfo = function(isbn) {
 	return Parse.Cloud.httpRequest({ url: z });
 };
 
-exist = function(isbn) {
-	return Parse.Cloud.httpRequest({
-		url: "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn
-	});
+parseAttributes = function(attributes) {
+	return "Test";
 };
