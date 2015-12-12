@@ -94,15 +94,15 @@ var Copy = Parse.Object.extend("Copy", {
  				return Copy.toStatus(transaction.get("transactionType"));
  			});
  	},
-    addCopy: function(isbn, placeId, memberNo) {
-    	var _doseExist = exist(isbn);
-    	if (_doseExist) {
-    		var _bookInfo = getBookInfo();
-    		var _attributes = parseAttributes(_bookInfo);
-    		if (_bookInfo == 0){
+    addCopy: function(bookNo, memberNo, placeNo) {
+    	var _doesExist = exist(bookNo);
+    	if (!_doesExist) {
+    		var _bookInfo = getGoogleBookInfo();
+			if (_bookInfo[totalItems] > 0){
+    			var _attributes = parseAttributes(_bookInfo);
     			var Copy = Parse.Object.extend("Copy");
 				var _copy = new Copy();
-				_copy.set("bookNo", isbn);
+				_copy.set("bookNo", bookNo);
 				_copy.set("attributes", _attributes);
 				_copy.save(null, {
   					success: function(_copy) {
@@ -420,4 +420,10 @@ getAmazonBookInfo = function(isbn) {
 	var z = url + str_para + "&Signature=" + signature;
 
 	return Parse.Cloud.httpRequest({ url: z });
+};
+
+exist = function(isbn) {
+	return Parse.Cloud.httpRequest({
+		url: "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn
+	});
 };
