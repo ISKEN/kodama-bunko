@@ -95,73 +95,26 @@ var Copy = Parse.Object.extend("Copy", {
  			});
  	},
     add: function(bookNo, attributes,memberNo,placeNo ) {
-    	var member = null;
+		var _member = null;
+		var _place = null;
     	console.log("addCopy start");
-    	var Copy = Parse.Object.extend("Copy");
-		var _copy = new Copy();
-		_copy.set("bookNo", bookNo);
-		_copy.set("attributes", attributes);
-		_copy.save();
-		console.log("addTran start");
-		console.log("member,place " + memberNo+ "  :  "+placeNo);
-
-		//Transactionが保存できない
-		var Member = Parse.Object.extend("Member");
-		var query = new Parse.Query(Member);
-		query.equalTo("memberNo", memberNo);
-		return query.find()
-			.then(function(members) {
-				console.log("member find" + JSON.stringify(members));
-				// 登録されていなければエラー
-				if (members.length == 0) {
-					response.error("会員が登録されていません。");
-				} else {
-					member = members[0];
-				}
-			});
-		
- 		var place = Place.get(placeNo);
-	 	var Transaction = Parse.Object.extend("Transaction");
-		var transaction = new Transaction();
-		transaction.set("effectiveDate", new Date());
-		transaction.set("transactionType", "登録");
-		transaction.set("member", member);
-		transaction.set("copy", _copy);
-		transaction.set("place", place);
-		transaction.save();
-		console.log("member " + JSON.stringify(member));
-		console.log("addTranEnd");
- 	},  
-	// Class properties
- 	get: function(copyId) {
-		var Copy = Parse.Object.extend("Copy");
-		var query = new Parse.Query(Copy);
-		return query.get(copyId);
- 	},
- 	// Class properties
- 	getByBookNo: function(bookNo) {
- 		console.log("Call getByBookNo");
- 		console.log("bookNo is "+ bookNo);
-		var Copy = Parse.Object.extend("Copy");
-		var query = new Parse.Query(Copy);
-		query.equalTo("bookNo", bookNo);
-		
-		return query.find({
-		success: function(results){
-			if(results.length == 0) {
-				console.log("getBookNo is none");
-				response.error("蔵書が登録されていません。");
-			} else {
-				console.log("getBookNo is succuse");
-				response.success(results[0]);
-			}
-		},
-		error: function(error) {
-			console.log("getBookNo is error");
-			response.error(error);
-		}
-	});
-		
+    	var Copy =  Parse.Object.extend("Copy");
+		var copy = new Copy();
+		copy.set("bookNo", bookNo);
+		copy.set("attributes", attributes);
+		copy.save(null, {
+  			success: function(copy) {
+    			// Execute any logic that should take place after the object is saved.
+    			console.log('New object created with objectId: ' + copy.id);
+  			},
+  			error: function(copy, error) {
+    			// Execute any logic that should take place if the save fails.
+    			// error is a Parse.Error with an error code and description.
+    			console.log('Failed to create new object, with error code: ' + error.description);
+  			}
+		});
+		console.log('New object created with objectId: nn' + copy.id);
+		console.log("copy save done");
  	},
  	toStatus: function(type) {
  		if (type == "登録") { return "未在庫"; }
