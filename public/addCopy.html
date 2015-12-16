@@ -12,8 +12,8 @@
 	    <script type="text/javascript" src="http://www.parsecdn.com/js/parse-1.5.0.min.js"></script>
 	    <script type="text/javascript">
 	    <!--
-			var _memberNo = null;
-			var _placeNo = "P_NewBooks";
+			var _memberId = null;
+			var _placeId = null;
 	    	load = function(data) {
 	    		// 最後の行を読み込む
 	    		var _last = data.substring(data.lastIndexOf("\n")).replace(/\r?\n/g,"");
@@ -22,13 +22,14 @@
 	    		// 会員、書籍か判定する
 	    		// 13桁であれば、書籍、最初の1文字が"U"の場合は会員
 	    		if (_last.length == 13) {
-	    			if (_memberNo === null) {
+	    			console.log("蔵書の登録");
+	    			if (_memberId === null) {
 	    				notifyError({ message: "会員を指定してください。" });
 	    				return;
 	    			}
 	    			// 蔵書の登録
-	    			console.log("ここまで");
-	    			Parse.Cloud.run('addCopy', { "bookNo": _last, "memberNo": "Mmai3", "placeNo" : _placeNo }, {
+	    			console.log("memberId"+ _memberId+ " placeId " + _placeId);
+	    			Parse.Cloud.run('addCopy', { "bookNo": _last, "memberId": _memberId, "placeId" : _placeId }, {
 	    				// 登録に成功した場合
 						success: function(result) {
 							_copyId = result.id;
@@ -46,7 +47,7 @@
 	    		if (_last.substring(0, 1) == "M") {
 	    			Parse.Cloud.run('getMember', { memberNo: _last }, {
 						success: function(result) {
-							_memberNo = result.id;
+							_memberId = result.id;
 							notifyOk("OK");
 						},
 						error: function(error) {
@@ -55,6 +56,19 @@
 					});
 		    		return;
 		    	}
+		    	// 保管場所
+	    		if (_last.substring(0, 1) == "P") {
+	    			Parse.Cloud.run('getPlace', { placeNo: _last }, {
+						success: function(result) {
+							_placeId = result.id;
+							notifyOk("OK");
+						},
+						error: function(error) {
+							notifyError(error);
+						}
+					});
+		    		return;
+	    		}
 	    		notifyError({ "message" : "有効でない値です。" });
 	    	};
 	    	notifyOk = function(message) {
@@ -66,7 +80,8 @@
 	    		document.getElementById('audio_error').play();
 	    	};
 	    	clear = function() {
-	    		_memberNo = null;
+	    		_placeId = null;
+	    		_memberId = null;
 	    	};
 	    	$(function(){
 	    		$("#data").keypress( function( event ){
