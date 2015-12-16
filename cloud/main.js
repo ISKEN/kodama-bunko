@@ -84,14 +84,9 @@ var Copy = Parse.Object.extend("Copy", {
 		query.descending("effectiveDate");
  		return query.find()
  			.then(function(transactions) {
- 				if (transactions.length == 0) {
- 					return Parse.Promise.error("保有移動が登録されていません。");
- 				}
- 				var query2 = new Parse.Query(Transaction);
- 				return query2.get(transactions[0].id);
- 			})
- 			.then(function(transaction) {
- 				return Copy.toStatus(transaction.get("transactionType"));
+ 				var type = transactions.length == 0 
+ 						? "" : transactions[0].transactionType;
+ 				return Copy.toStatus(type);
  			});
     }    
 }, {
@@ -102,7 +97,7 @@ var Copy = Parse.Object.extend("Copy", {
 		return query.get(copyId);
  	},
  	toStatus: function(type) {
- 		if (type == "登録") { return "未在庫"; }
+ 		if (type == "") { return "未在庫"; }
  		if (type == "貸出") { return "貸出中"; }
  		if (type == "移動" || type == "返却") { return "在庫中"; }
  		if (type == "削除" ) { return "削除済"; }
@@ -315,6 +310,24 @@ Parse.Cloud.define("getCopy", function(request, response) {
 });
 
 /**
+ * 蔵書の検索
+ * @param {string} keyword
+ */
+Parse.Cloud.define("findCopy", function(request, response) {
+	var Copy = Parse.Object.extend("Copy");
+	var query = new Parse.Query(Copy);
+//	query.equalTo("bookNo", request.params.bookNo);
+	return query.find({
+		success: function(results){
+			response.success(results);
+		},
+		error: function(error) {
+			response.error(error);
+		}
+	});
+});
+
+/**
  * 場所の検索
  * @param {string} placeNo - Place.placeNo
  */
@@ -378,7 +391,7 @@ getAmazonBookInfo = function(isbn) {
 		AssociateTag : "KodamaBunko555",
 		ItemId: isbn,
 		Timestamp:new Date().toISOString(),
-		AWSAccessKeyId:"AKIAI27S6S7W3RZN6P5Q",
+		AWSAccessKeyId:"", // AWSに怒られたので、一旦消す。。
 		IdType:"ISBN",
 		ResponseGroup:"ItemAttributes"
 	};
