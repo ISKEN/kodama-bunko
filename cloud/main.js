@@ -130,115 +130,6 @@ var Place = Parse.Object.extend("Place", {
  	}
 });
 
-/**
- * 保有の登録
- * @param {string} itemNo - Item.itemNo
- * @param {string} locationId - Location.objectId
- */
-Parse.Cloud.define("addHolding", function(request, response) {
-	var itemNo = request.params.itemNo;
-	var locationId = request.params.locationId;
-	// 書籍を検索する
-	var Item = Parse.Object.extend("Item");
-	var query = new Parse.Query(Item);
-	query.equalTo("itemNo", itemNo);
-	query.find({
-		success: function(results) {
-			// ---- 登録されていない場合 ---- //
-			if (results.length == 0) {
- 				// APIで検索する（検索してなかったものは登録しない）
- 				// XXX登録しないようにするかどうするか
-				getGoogleBookInfo(itemNo)
-				.then(function(httpResponse) {
-					var _response = JSON.parse(httpResponse.text);
-					// 見つからなかった場合
-					console.log(httpResponse);
-					if (_response.totalItems == 0) {
-						// なかった場合は国会図書館のAPIを使う
-						// XXX 後で実装する
-						response.error("APIで検索できませんでした。");
-				// 		var xmlToJSON = require('cloud/xmlToJSON.js');
-				// 		console.log(xmlToJSON);
-				// 		var json = new xmlToJSON().parseString(httpResponse.text);
-					} else {
-						// 見つかった場合
-						for (var i = 0; i < _response.items.length; i++) {
-							var res_item = _response.items[i];
-							for (var j = 0; j < res_item.volumeInfo.industryIdentifiers.length; j++) {
-								var industryIdentifier = res_item.volumeInfo.industryIdentifiers[j];
-								if (industryIdentifier.identifier == itemNo) {
-									// 品目を登録する
-									var item = new Item();
-									item.save({ itemNo : itemNo, attributes : JSON.stringify(res_item) }, {
-										success: function(object) {
-											// 場所を検索する
-											// 後でリファクタする
-											var Location = Parse.Object.extend("Location");
-											var query = new Parse.Query(Location);
-											query.get(locationId, {
-												success: function(object) {
-													// 保有を登録する
-									    			var Holding = Parse.Object.extend("Holding");
-													var holding = new Holding();
-													holding.save({ item : item, location : object }, {
-														success: function(object) {
-															response.success({ message: "登録しました。" });
-														},
-														error: function(model, error) {
-															response.error(error);
-														}
-													});	    														
-											  	},
-												error: function(object, error) {
-													response.error(error);
-												}
-											});
-
-										},
-										error: function(model, error) {
-											response.error(error);
-										}
-									});
-								}
-							};
-						};
-					}
-				}, function(httpResponse) {
-				  // error
-					console.error('Request failed with response code ' + httpResponse.status);
-					response.error(httpResponse);
-				});
-			}
-			// ---- 登録されている場合 ---- //
-			if (results.length != 0) {
-				// 場所を検索する
-				var Location = Parse.Object.extend("Location");
-				var query = new Parse.Query(Location);
-				query.get(locationId, {
-					success: function(object) {
-		    			// 保有を登録する
-		    			var Holding = Parse.Object.extend("Holding");
-						var holding = new Holding();
-						holding.save({ item : results[0], location : object }, {
-							success: function(object) {
-								response.success({ message: "登録しました。"});
-							},
-							error: function(model, error) {
-								response.error(error);
-							}
-						});			
-				  	},
-					error: function(object, error) {
-						response.error(error);
-					}
-				});
-			}
-		},
-		error: function(error) {
-			response.error(error);
-		}
- 	});
-});
 
 /**
  * 貸出の記録
@@ -248,6 +139,7 @@ Parse.Cloud.define("addHolding", function(request, response) {
 Parse.Cloud.define("borrow", function(request, response) {
 	var copyId = request.params.copyId;
 	var memberId = request.params.memberId;
+	console.log(memberId+ "memberId 貸出");
 	Copy.get(copyId)
 		.then(function(copy){
 			return copy.borrow(memberId);
@@ -361,6 +253,45 @@ Parse.Cloud.define("getMember", function(request, response) {
 	});
 });
 
+
+/**
+ * 蔵書の登録
+ * @param {string} bookNo - 
+ * @param {string} memberId
+ * @param {string} placeId 
+ */
+Parse.Cloud.define("addCopy", function(request, response) {
+	var memberId = request.params.memberId;
+	var placeId = request.params.placeId;
+	var bookNo = request.params.bookNo;
+	
+	var Copy = Parse.Object.extend("Copy");
+	var query = new Parse.Query(Copy);
+	query.equalTo("bookNo", bookNo);
+	query.find({
+		success: function(results){
+			console.log("results -->" + results);
+			if(results.length == 0) {
+				console.log("getBookNo is none");
+				var _bookInfo = getGoogleBookInfo(bookNo);
+				var attributes = parseAttributes(_bookInfo);
+				var copy = new Copy();
+				copy.set("bookNo", bookNo);
+				copy.set("attributes", attributes);
+				copy.save();
+          		response.success("OK");
+			} else {
+				console.log("Exist Book(s).");
+				response.error("既に蔵書が登録されています。");
+			}
+		},
+		error: function(error) {
+      		console.log("getBookNo is error");
+			response.error(error);
+		}
+	});
+  });
+
 getGoogleBookInfo = function(isbn) {
 	return Parse.Cloud.httpRequest({
 		url: "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn
@@ -396,4 +327,8 @@ getAmazonBookInfo = function(isbn) {
 	var z = url + str_para + "&Signature=" + signature;
 
 	return Parse.Cloud.httpRequest({ url: z });
+};
+
+parseAttributes = function(attributes) {
+	return "Test";
 };
