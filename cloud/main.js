@@ -78,17 +78,17 @@ var Copy = Parse.Object.extend("Copy", {
     },
     getStatus: function() {
 		var Transaction = Parse.Object.extend("Transaction");
-    	var query = new Parse.Query(Transaction);
-    	query.equalTo("copy", this);
+		var query = new Parse.Query(Transaction);
+	   	query.equalTo("copy", this);
     	query.limit(1);
 		query.descending("effectiveDate");
- 		return query.find()
- 			.then(function(transactions) {
- 				var type = transactions.length == 0 
- 						? "" : transactions[0].transactionType;
+ 		return query.first()
+ 			.then(function(transaction) {
+ 				var type = transaction == null 
+ 						? "" : transaction.get("transactionType");
  				return Copy.toStatus(type);
  			});
-    }    
+    }
 }, {
 	// Class properties
  	get: function(copyId) {
@@ -134,7 +134,6 @@ var Place = Parse.Object.extend("Place", {
 Parse.Cloud.define("borrow", function(request, response) {
 	var copyId = request.params.copyId;
 	var memberId = request.params.memberId;
-	console.log(memberId+ "memberId 貸出");
 	Copy.get(copyId)
 		.then(function(copy){
 			return copy.borrow(memberId);
