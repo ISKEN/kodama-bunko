@@ -172,7 +172,7 @@ Parse.Cloud.define("putin", function(request, response) {
 			});
 		})
 		.then(function(transaction) {
-			response.success("入庫OK");
+			response.success(transaction.get("transactionType") + "OK");
 		}, function(error) {
 			response.error(error);
 		});
