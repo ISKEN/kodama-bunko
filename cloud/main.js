@@ -269,12 +269,8 @@ Parse.Cloud.define("getMember", function(request, response) {
 /**
  * 蔵書の登録
  * @param {string} bookNo - 
- * @param {string} memberId
- * @param {string} placeId 
  */
 Parse.Cloud.define("addCopy", function(request, response) {
-	var memberId = request.params.memberId;
-	var placeId = request.params.placeId;
 	var bookNo = request.params.bookNo;
 	
 	var Copy = Parse.Object.extend("Copy");
