@@ -9,38 +9,97 @@
 	    <script src="js/jquery-2.1.4.min.js"></script>
 	    <!-- Include all compiled plugins (below), or include individual files as needed -->
 	    <script src="js/bootstrap.min.js"></script>
-	    <script src="js/config.js"></script>	    
+	    <script src="js/jquery.twbsPagination.js"></script>
+	    <script src="js/waitingDialog.js"></script>
+	    <script src="js/config.js"></script>
 	    <script type="text/javascript" src="http://www.parsecdn.com/js/parse-1.5.0.min.js"></script>
 	    <script type="text/javascript">
 	    <!--
+	    	var pageLimit = 20;
 	    	$(function(){
 	    		// Parse
-	    		Parse.initialize(config.applicationId, config.javascriptKey);	    		
-    			Parse.Cloud.run('findCopy', {}, {
+	    		Parse.initialize(config.applicationId, config.javascriptKey);
+	    		// 検索用
+				$("#btn").click(function() {
+					// Loadingを表示
+					waitingDialog.show("Loading...", {dialogSize: 'sm'});
+					// ページャー、行の削除
+					$("#pagination").twbsPagination('destroy');
+					clearRow();
+					// キーワードは半角スペース、全角スペースで区切る					
+					var str = $("#keywords").val();
+					var keywords = str.split(/\s|"　"/);
+					findCopy(keywords);
+				});	
+	    	});
+			findCopy = function(keywords) {
+    			Parse.Cloud.run('findCopy', { "keywords" : keywords }, {
 					success: function(results) {
-						for (var i = 0; i < results.length; i++) {
-							var result = results[i];
-							console.log(result);
-							$("#list").append(
-							    $("<tr></tr>")
-							        .append($("<td></td>").text(result.attributes.item.attributes.itemNo))
-							        .append($("<td></td>").text(result.attributes.item.attributes.attributes))
-							        .append($("<td></td>").text(result.attributes.location　!= null ? 
-							        	result.attributes.location.attributes.locationNo : ""))
-							        .append($("<td></td>").text(result.attributes.member != null ? 
-							        	result.attributes.member.attributes.name : ""))
-							);
-						};
+						var rows = results;
+						var num = results.length;
+						// 0件だったら、行をクリアする
+						if (num == 0 ) {
+							clearRow();
+							waitingDialog.hide("見つかりませんでした。");
+							return;
+						}
+						if (num != 0) {
+							// 最初のページを作成
+							displayRow(results, 1);
+							// ページャーの作成
+							var pageNum = Math.ceil(num / pageLimit);
+						    $('#pagination').twbsPagination({
+						        totalPages: pageNum,
+						    	startPage: 1,
+						        visiblePages: 7,
+						        first: '&laquo;',
+						        last: '&raquo;',
+						        prev: 'Prev',
+						        onPageClick: function (event, page) {
+						        	clearRow();
+						        	displayRow(rows, page);
+									$('body,html').animate({
+										scrollTop: 0
+									}, 600);
+						        }
+						    });
+						    // Loadingを非表示
+							waitingDialog.hide(num + "件見つかりました。");							
+						}
 					},
 					error: function(error) {
+						waitingDialog.hide(error.message);
 						console.log(error);
 					}
-				});	    				
-	    	});
-	    //-->
+				});
+			}
+			clearRow = function() {
+				$( "#list" ).find("tr:gt(0)").remove();				
+			}
+			displayRow = function(rows, page) {
+				var firstRow = page == 1 ? 1 : ((page-1)*pageLimit)+1;
+				var lastRow = rows.length < firstRow+pageLimit-1 ? rows.length : firstRow+pageLimit-1;
+//				console.log("length=" + rows.length + " firstRow=" + firstRow + " lastRow=" + lastRow);
+				for (var i = firstRow-1; i <= lastRow-1; i++) {
+					var row = rows[i];
+					var copy = row.attributes;
+					var attr = JSON.parse(copy.attributes);
+					$("#list").append(
+					    $("<tr></tr>")
+					        .append($("<td></td>").text(i+1))
+					        .append($("<td></td>").text(copy.bookNo))
+					        .append($("<td></td>").append($("<img>").attr({"src":attr.smallThumbnail})))
+					        .append($("<td></td>").text(attr.title))
+					        .append($("<td></td>").text(attr.authors))
+					        .append($("<td></td>").text(copy.location　!= null ? copy.location.attributes.locationNo : ""))
+					        .append($("<td></td>").text(copy.member != null ? copy.member.attributes.name : ""))
+					);
+				};
+			}
+		//-->
 	    </script>
 	</head>
-	<body>
+	<body onLoad="document.search.keywords.focus()">
 		<div class="container">
 		    <h1><a href="index.html">
 		      <span class="glyphicon glyphicon-book" aria-hidden="true"></span></a> 児玉文庫</h1>
@@ -49,27 +108,31 @@
 				</button> 蔵書の検索</h2>
 			<div class="row">
 			  <div class="col-lg-6">
-			    <div class="input-group">
-			      <span class="input-group-btn">
-			        <button class="btn btn-default" type="button">
-			        	<span class="glyphicon glyphicon-search" aria-hidden="true"></span>
-			        </button>
-			      </span>
-			      <input type="text" class="form-control" placeholder="Search for...">
-			    </div><!-- /input-group -->
+			  	<form name="search">
+				    <div class="input-group">
+				      <input type="text" class="form-control" placeholder="keywords..." name="keywords" id="keywords">
+				      <span class="input-group-btn">
+				        <button class="btn btn-default" type="button" id="btn">検索</button>
+				      </span>
+				    </div><!-- /input-group -->
+				  </form>
 			  </div><!-- /.col-lg-6 -->
 			</div>
 			<br>
 			<div class="row">
-				<div class="col-md-9">
+				<div class="col-md-12">
 					<table class="table table-hover" id="list">
 						<tr>
+							<th>#</th>
 							<th>書籍番号</th>
-							<th class="col-xs-5 col-ms-5 col-md-5 col-lg-5">属性</th>
-							<th>保管場所</th>
-							<th>借りている人</th>
+							<th class="col-xs-1 col-ms-1 col-md-1 col-lg-1"></th>
+							<th class="col-xs-3 col-ms-3 col-md-3 col-lg-3">タイトル</th>
+							<th class="col-xs-3 col-ms-3 col-md-3 col-lg-3">著者</th>
+							<th class="col-xs-2 col-ms-2 col-md-2 col-lg-2">保管場所</th>
+							<th class="col-xs-2 col-ms-2 col-md-2 col-lg-2">借りている人</th>
 						</tr>
 					</table>
+					<nav><ul id="pagination" class="pagination"></ul></nav>					
 				</div>
 			</div>
 		</div>

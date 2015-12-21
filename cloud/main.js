@@ -205,17 +205,19 @@ Parse.Cloud.define("getCopy", function(request, response) {
  * @param {string} keyword
  */
 Parse.Cloud.define("findCopy", function(request, response) {
-	var Copy = Parse.Object.extend("Copy");
 	var query = new Parse.Query(Copy);
-//	query.equalTo("bookNo", request.params.bookNo);
-	return query.find({
-		success: function(results){
-			response.success(results);
-		},
-		error: function(error) {
-			response.error(error);
-		}
-	});
+	var keywords = request.params.keywords;
+	for (var i = 0; i < keywords.length; i++) {
+		if (keywords[i] == "") continue;
+		query.matches("attributes", ".*" + keywords[i] + ".*");
+	};
+//	var data = new Array();
+	query.find()
+		.then(function(copies) {
+			response.success(copies);
+		}, function(error) {
+			response.error(error);			
+		});
 });
 
 /**

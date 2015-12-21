@@ -1,4 +1,4 @@
 var config = {
-    "applicationId": "AYV9IQ4rOP2uU1bT3aB8wyhrwLETzknKi65sqzpq",
-    "javascriptKey": "CDhFlULbAfVUyz1dROqNO6AOOkRSYtBbSIubff9j"  
+    "applicationId": "e6tgfUrqtOvoXsqFd9xCeYqsSxbiexgvvfss5741",
+    "javascriptKey": "5qn6iTW6i1ugKa0v2Btrx1rEj33hvSRrDqNQJmFR"  
 };
