@@ -279,10 +279,11 @@ Parse.Cloud.define("addCopy", function(request, response) {
 	query.find({
 		success: function(results){
 			if(results.length == 0) {
-				var bookInfoUrl = "https://www.googleapis.com/books/v1/volumes?q=isbn:" + bookNo;
+				var url ="https://www.googleapis.com/books/v1/volumes?q=isbn:" + bookNo;
+				var attributes = '{\"googleApiUrl\":\"'+ url + '\"}' ;
 				var copy = new Copy();
 				copy.set("bookNo", bookNo);
-				copy.set("attributes", bookInfoUrl);
+				copy.set("attributes", attributes);
 				copy.save(null, {
 					success: function(result) {
 						response.success("OK!");
