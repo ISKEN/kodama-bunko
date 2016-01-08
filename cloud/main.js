@@ -207,17 +207,70 @@ Parse.Cloud.define("getCopy", function(request, response) {
 Parse.Cloud.define("findCopy", function(request, response) {
 	var query = new Parse.Query(Copy);
 	var keywords = request.params.keywords;
-	for (var i = 0; i < keywords.length; i++) {
-		if (keywords[i] == "") continue;
-		query.matches("attributes", ".*" + keywords[i] + ".*");
-	};
-//	var data = new Array();
+	var regex;
+	if (keywords.length == 0) {
+		response.error("検索条件を指定してください。");
+	} else if (keywords.length == 1) {
+		regex = ".*" + keywords[0] + ".*";
+	} else {
+		regex = "^";
+		for (var i = 0; i < keywords.length; i++) {
+			if (keywords[i] == "") continue;
+			regex += "(?=.*" + keywords[i] + ")";
+		};
+		regex += ".*"
+	}
+	console.log(regex);
+	query.matches("attributes", regex);
+	var Transaction = Parse.Object.extend("Transaction");
+	var promises = [];
 	query.find()
-		.then(function(copies) {
-			response.success(copies);
+	.then(function(copies) {
+		copies = copies;
+	    for(var i = 0; i < copies.length; i++) {
+	        var copy = copies[i];
+	        var tquery = new Parse.Query(Transaction);
+	        tquery.equalTo("copy", copy);
+			tquery.descending("effectiveDate");
+			tquery.include("member");
+			tquery.include("place");
+	        promises.push(tquery.first());
+	    }
+	  	Parse.Promise.when(promises)
+		.then(function() {
+			// Tranasctionの検索結果を、CopyのIDをキーにしたMapにする
+			var map = {};
+			for(var j = 0; j < arguments.length; j++) {
+				var t = arguments[j];
+				if (t != null) {
+					var copy = t.get("copy");
+					console.log(t.get("member"));
+					map[copy.id] = t;
+				}
+			}
+			// 検索されたCopyをもとに、レスポンスで返す結果を作成する
+			var results = [];
+		    for(var k = 0; k < copies.length; k++) {
+		    	var copy = copies[k];
+		    	var transaction = map[copy.id];
+		    	var jsonCopy = copy.toJSON();
+		    	if (transaction != null) {
+		    		var member = transaction.get("member");
+		    		var place = transaction.get("place");
+		    		if (member != null) {
+		    			jsonCopy["member"] = member.toJSON();
+		    		}
+		    		if (place != null) {
+		    			jsonCopy["place"] = place.toJSON();
+		    		}
+		    	}
+		    	results.push(jsonCopy);
+		    }
+			response.success(results);
 		}, function(error) {
-			response.error(error);			
+			response.error(error);	
 		});
+	})
 });
 
 /**

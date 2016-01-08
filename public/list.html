@@ -81,8 +81,8 @@
 				var lastRow = rows.length < firstRow+pageLimit-1 ? rows.length : firstRow+pageLimit-1;
 //				console.log("length=" + rows.length + " firstRow=" + firstRow + " lastRow=" + lastRow);
 				for (var i = firstRow-1; i <= lastRow-1; i++) {
-					var row = rows[i];
-					var copy = row.attributes;
+					var copy = rows[i];
+					// var copy = row.attributes;
 					var attr = JSON.parse(copy.attributes);
 					$("#list").append(
 					    $("<tr></tr>")
@@ -91,8 +91,8 @@
 					        .append($("<td></td>").append($("<img>").attr({"src":attr.smallThumbnail})))
 					        .append($("<td></td>").text(attr.title))
 					        .append($("<td></td>").text(attr.authors))
-					        .append($("<td></td>").text(copy.location　!= null ? copy.location.attributes.locationNo : ""))
-					        .append($("<td></td>").text(copy.member != null ? copy.member.attributes.name : ""))
+					        .append($("<td></td>").text(copy.place != null ? copy.place.address : ""))
+					        .append($("<td></td>").text(copy.member != null ? copy.member.name : ""))
 					);
 				};
 			}
