@@ -3,17 +3,16 @@
 	<head>
 		<meta charset="utf-8">
 		<!-- Bootstrap -->
-    	<link href="css/bootstrap.min.css" rel="stylesheet">
-    	<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
-	    <script src="js/jquery-2.1.4.min.js"></script>
-	    <!-- Include all compiled plugins (below), or include individual files as needed -->
-	    <script src="js/bootstrap.min.js"></script>
+		<link href="css/bootstrap.min.css" rel="stylesheet">
+		<link href="css/main.css" rel="stylesheet">
+		<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+		<script src="js/jquery-2.1.4.min.js"></script>
+		<!-- Include all compiled plugins (below), or include individual files as needed -->
+		<script src="js/bootstrap.min.js"></script>
 	    <script src="js/config.js"></script>	    
 	    <script type="text/javascript" src="http://www.parsecdn.com/js/parse-1.5.0.min.js"></script>
 	    <script type="text/javascript">
 	    <!--
-			var _memberId = null;
-			var _placeId = null;
 	    	load = function(data) {
 	    		// 最後の行を読み込む
 	    		var _last = data.substring(data.lastIndexOf("\n")).replace(/\r?\n/g,"");
@@ -22,14 +21,8 @@
 	    		// 会員、書籍か判定する
 	    		// 13桁であれば、書籍、最初の1文字が"U"の場合は会員
 	    		if (_last.length == 13) {
-	    			console.log("蔵書の登録");
-	    			if (_memberId === null) {
-	    				notifyError({ message: "会員を指定してください。" });
-	    				return;
-	    			}
 	    			// 蔵書の登録
-	    			console.log("memberId"+ _memberId+ " placeId " + _placeId);
-	    			Parse.Cloud.run('addCopy', { "bookNo": _last, "memberId": _memberId, "placeId" : _placeId }, {
+	    			Parse.Cloud.run('addCopy', { "bookNo": _last}, {
 	    				// 登録に成功した場合
 						success: function(result) {
 							_copyId = result.id;
@@ -43,32 +36,6 @@
 	    			});
 	    			return;
 	    		}
-	    		// 会員
-	    		if (_last.substring(0, 1) == "M") {
-	    			Parse.Cloud.run('getMember', { memberNo: _last }, {
-						success: function(result) {
-							_memberId = result.id;
-							notifyOk("OK");
-						},
-						error: function(error) {
-							notifyError(error);
-						}
-					});
-		    		return;
-		    	}
-		    	// 保管場所
-	    		if (_last.substring(0, 1) == "P") {
-	    			Parse.Cloud.run('getPlace', { placeNo: _last }, {
-						success: function(result) {
-							_placeId = result.id;
-							notifyOk("OK");
-						},
-						error: function(error) {
-							notifyError(error);
-						}
-					});
-		    		return;
-	    		}
 	    		notifyError({ "message" : "有効でない値です。" });
 	    	};
 	    	notifyOk = function(message) {
@@ -80,7 +47,6 @@
 	    		document.getElementById('audio_error').play();
 	    	};
 	    	clear = function() {
-	    		_placeId = null;
 	    		_memberId = null;
 	    	};
 	    	$(function(){
@@ -100,21 +66,26 @@
 	    </script>
 	</head>
 	<body>
-		<h1>児玉文庫</h1>
-		<h2>蔵書の登録</h2>
-		<div class="row">
-		  <div class="col-md-1">
-			<textarea rows="30" cols="15" id="data"></textarea>
-			<button id="clear" type="button" class="btn btn-default btn-lg btn-block">Clear</button>				
-		  </div>
-		  <div class="col-md-3" id="msg">
-		  </div>
+		<div class="container">
+		    <h1><a href="index.html">
+		      <span class="glyphicon glyphicon-book" aria-hidden="true"></span></a> 児玉文庫</h1>
+			<h2><button type="button" class="btn btn-circle  btn-warning">
+				<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+				</button> 蔵書の登録</h2>
+			<div class="row">
+			  <div class="col-md-1">
+				<textarea rows="30" cols="15" id="data"></textarea>
+				<button id="clear" type="button" class="btn btn-default btn-lg">Clear</button>				
+			  </div>
+			  <div class="col-md-3" id="msg">
+			  </div>
+			</div>
+			<audio id="audio_ok" preload="auto">
+			   <source src="audio/ok.mp3" type="audio/mp3">
+			</audio>
+			<audio id="audio_error" preload="auto">
+			   <source src="audio/error.wav" type="audio/wav">
+			</audio>
 		</div>
-		<audio id="audio_ok" preload="auto">
-		   <source src="audio/ok.mp3" type="audio/mp3">
-		</audio>
-		<audio id="audio_error" preload="auto">
-		   <source src="audio/error.wav" type="audio/wav">
-		</audio>
 	</body>
 </html>
