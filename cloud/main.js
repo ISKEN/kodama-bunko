@@ -280,43 +280,48 @@ Parse.Cloud.define("addCopy", function(request, response) {
 	query.equalTo("bookNo", bookNo);
 	query.find()
 		.then(function(results) {
-			if(results.length == 0) {
+		
+			if(results.length > 0) {
+				console.log("Exist Book(s).");
+				response.error("既に蔵書が登録されています。");
+			}else{
 				var url ="https://www.googleapis.com/books/v1/volumes?q=isbn:" + bookNo;
 				var attributes = '{\"googleApiUrl\":\"'+ url + '\"}' ;
-				getGoogleBookInfo(bookNo)
-					.then(function(httpResponse) {
-						console.log("then httpResponse");
-						console.log(httpResponse.text);
-					})
-					.then(function() {
-						console.log("then none");
-					}, function(error) {
-						console.log("then error");
-						response.error(error);
-					});
+				return getGoogleBookInfo(bookNo);
+			}
+		})	
+		.then(function(httpResponse) {
+			console.log("then httpResponse");
+			console.log(httpResponse.text);
+			response.success(httpResponse.text);
+		}, function(error) {
+			console.log("then error");
+			response.error(error);
+		});
+		/**
 				var copy = new Copy();
 				copy.set("bookNo", bookNo);
 				copy.set("attributes", attributes);
 				copy.save()
 					.then(function(result) {
-						response.success("OK!");
+						//response.success("OK!");
 					}, function(error) {
 						response.error(error);
 					});
-			} else {
-				console.log("Exist Book(s).");
-				response.error("既に蔵書が登録されています。");
-			}
+					
 		}, function(error) {
 			console.log("蔵書が検索エラー");
 			response.error(error);		
 		});
+		*/
 });
 
 
 getGoogleBookInfo = function(isbn) {
 	//var address = "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn;
-	var address = 'http://www.parse.com/';
+	//var address = 'http://www.parse.com/';
+	var address = 'http://www.yahoo.co.jp/';
+
 	//var address = 'https://www.googleapis.com/books/v1/volumes';
 	var paramsData = 'q=isbn:' + isbn;
 	return Parse.Cloud.httpRequest({
