@@ -278,43 +278,51 @@ Parse.Cloud.define("addCopy", function(request, response) {
 	var Copy = Parse.Object.extend("Copy");
 	var query = new Parse.Query(Copy);
 	query.equalTo("bookNo", bookNo);
-	query.find({
-		success: function(results){
+	query.find()
+		.then(function(results) {
 			if(results.length == 0) {
 				var url ="https://www.googleapis.com/books/v1/volumes?q=isbn:" + bookNo;
 				var attributes = '{\"googleApiUrl\":\"'+ url + '\"}' ;
+				getGoogleBookInfo(bookNo)
+					.then(function(httpResponse) {
+						console.log("then httpResponse");
+						console.log(httpResponse.text);
+					})
+					.then(function() {
+						console.log("then none");
+					}, function(error) {
+						console.log("then error");
+						response.error(error);
+					});
 				var copy = new Copy();
 				copy.set("bookNo", bookNo);
 				copy.set("attributes", attributes);
-				copy.save(null, {
-					success: function(result) {
+				copy.save()
+					.then(function(result) {
 						response.success("OK!");
-					},
-					error: function(error) {
+					}, function(error) {
 						response.error(error);
-					}
-    			});
+					});
 			} else {
 				console.log("Exist Book(s).");
 				response.error("既に蔵書が登録されています。");
 			}
-		},
-		error: function(error) {
-      		console.log("蔵書が検索エラー");
-			response.error(error);
-		}
-	});
-  });
+		}, function(error) {
+			console.log("蔵書が検索エラー");
+			response.error(error);		
+		});
+});
+
 
 getGoogleBookInfo = function(isbn) {
-	Parse.Cloud.httpRequest({
-		url: "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn
+	//var address = "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn;
+	var address = 'http://www.parse.com/';
+	//var address = 'https://www.googleapis.com/books/v1/volumes';
+	var paramsData = 'q=isbn:' + isbn;
+	return Parse.Cloud.httpRequest({
+		url : address,
+	//	params: paramsData
 	})
-	.then(function(httpResponse) {
-		var _response = JSON.parse(httpResponse.text);
-		console.log("getbook then");
-		return _response;
-	});
 };
 
 getAmazonBookInfo = function(isbn) {
