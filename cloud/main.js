@@ -274,59 +274,62 @@ Parse.Cloud.define("getMember", function(request, response) {
  */
 Parse.Cloud.define("addCopy", function(request, response) {
 	var bookNo = request.params.bookNo;
-	
+	var _num;
 	var Copy = Parse.Object.extend("Copy");
 	var query = new Parse.Query(Copy);
 	query.equalTo("bookNo", bookNo);
 	query.find()
 		.then(function(results) {
-		
 			if(results.length > 0) {
 				console.log("Exist Book(s).");
-				response.error("既に蔵書が登録されています。");
-			}else{
-				var url ="https://www.googleapis.com/books/v1/volumes?q=isbn:" + bookNo;
-				var attributes = '{\"googleApiUrl\":\"'+ url + '\"}' ;
-				return getGoogleBookInfo(bookNo);
+				return Parse.Promise.error("既に蔵書が登録されています。");
 			}
+			return getGoogleBookInfo(bookNo);
 		})	
 		.then(function(httpResponse) {
-			console.log("then httpResponse");
-			console.log(httpResponse.text);
-			response.success(httpResponse.text);
+			console.log("httpResponse");
+			return JSON.parse(httpResponse.text);
+		})
+		.then(function(_response) {
+			console.log("_response");
+			if (_response.totalItems == 0) {
+				// なかった場合は国会図書館のAPIを使う
+				// XXX 後で実装する
+				return Parse.Promise.error("GoogleAPIで検索できませんでした。");
+			} else {
+				// 見つかった場合
+				for (var i = 0; i < _response.items.length; i++) {
+					var res_item = _response.items[i];
+					for (var j = 0; j < res_item.volumeInfo.industryIdentifiers.length; j++) {
+						var industryIdentifier = res_item.volumeInfo.industryIdentifiers[j];
+						if (industryIdentifier.identifier == bookNo) {
+							return parseAttributes(res_item);
+						}
+					}
+				}
+			}
+		})
+		.then(function(attributes){
+			console.log("attributes");
+			var copy = new Copy();
+			copy.set("bookNo", bookNo);
+			copy.set("attributes", JSON.stringify(attributes));
+			return copy.save();
+		})	
+		.then(function(result) {
+			console.log("result");
+			response.success("OK!");
 		}, function(error) {
-			console.log("then error");
+			console.log("then error1");
 			response.error(error);
 		});
-		/**
-				var copy = new Copy();
-				copy.set("bookNo", bookNo);
-				copy.set("attributes", attributes);
-				copy.save()
-					.then(function(result) {
-						//response.success("OK!");
-					}, function(error) {
-						response.error(error);
-					});
-					
-		}, function(error) {
-			console.log("蔵書が検索エラー");
-			response.error(error);		
-		});
-		*/
 });
 
 
 getGoogleBookInfo = function(isbn) {
-	//var address = "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn;
-	//var address = 'http://www.parse.com/';
-	var address = 'http://www.yahoo.co.jp/';
-
-	//var address = 'https://www.googleapis.com/books/v1/volumes';
-	var paramsData = 'q=isbn:' + isbn;
+	var address = "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn;
 	return Parse.Cloud.httpRequest({
-		url : address,
-	//	params: paramsData
+		url : address
 	})
 };
 
@@ -364,5 +367,21 @@ getAmazonBookInfo = function(isbn) {
 parseAttributes = function(attributes) {
 	console.log("361");
 	console.log(attributes);
-	return attributes;
+	var _attributes = {};
+    _attributes.asin = attributes.volumeInfo.industryIdentifiers[0].identifier;
+    _attributes.authors = attributes.volumeInfo.authors;
+    _attributes.category =  "なし";
+    _attributes.description =  attributes.volumeInfo.description;
+    _attributes.genre =  "なし";
+    _attributes.infoLink =  attributes.volumeInfo.infoLink; 
+    _attributes.isbn =  attributes.volumeInfo.industryIdentifiers[1].identifier;
+    _attributes.price =  "なし";
+    _attributes.publishedDate =  attributes.volumeInfo.publishedDate; 
+    _attributes.publisher =  "なし"; 
+    _attributes.rank =  "なし";
+    _attributes.smallThumbnail =  attributes.volumeInfo.smallThumbnail;
+    _attributes.thumbnail =  attributes.volumeInfo.thumbnail;
+    _attributes.title =  attributes.volumeInfo.title;
+    
+	return _attributes;
 };
