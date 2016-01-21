@@ -281,17 +281,14 @@ Parse.Cloud.define("addCopy", function(request, response) {
 	query.find()
 		.then(function(results) {
 			if(results.length > 0) {
-				console.log("Exist Book(s).");
 				return Parse.Promise.error("既に蔵書が登録されています。");
 			}
 			return getGoogleBookInfo(bookNo);
 		})	
 		.then(function(httpResponse) {
-			console.log("httpResponse");
 			return JSON.parse(httpResponse.text);
 		})
 		.then(function(_response) {
-			console.log("_response");
 			if (_response.totalItems == 0) {
 				// なかった場合は国会図書館のAPIを使う
 				// XXX 後で実装する
@@ -310,17 +307,14 @@ Parse.Cloud.define("addCopy", function(request, response) {
 			}
 		})
 		.then(function(attributes){
-			console.log("attributes");
 			var copy = new Copy();
 			copy.set("bookNo", bookNo);
 			copy.set("attributes", JSON.stringify(attributes));
 			return copy.save();
 		})	
 		.then(function(result) {
-			console.log("result");
 			response.success("OK!");
 		}, function(error) {
-			console.log("then error1");
 			response.error(error);
 		});
 });
@@ -365,8 +359,6 @@ getAmazonBookInfo = function(isbn) {
 };
 
 parseAttributes = function(attributes) {
-	console.log("361");
-	console.log(attributes);
 	var _attributes = {};
     _attributes.asin = attributes.volumeInfo.industryIdentifiers[0].identifier;
     _attributes.authors = attributes.volumeInfo.authors;
@@ -382,6 +374,5 @@ parseAttributes = function(attributes) {
     _attributes.smallThumbnail =  attributes.volumeInfo.smallThumbnail;
     _attributes.thumbnail =  attributes.volumeInfo.thumbnail;
     _attributes.title =  attributes.volumeInfo.title;
-    
 	return _attributes;
 };
